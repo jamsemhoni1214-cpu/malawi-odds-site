@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Malawi Odds & Sure Bets Platform</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#0f172a;color:#fff;margin:0}
+header{background:#020617;padding:18px;text-align:center}
+header h1{margin:0}
+nav{background:#111827;padding:10px;text-align:center}
+nav a{color:#fff;margin:0 12px;text-decoration:none;font-weight:bold}
+.container{max-width:1200px;margin:auto;padding:20px}
+.card{background:#111827;border-radius:12px;padding:16px;margin-bottom:20px}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{padding:10px;border-bottom:1px solid #1f2937;text-align:center}
+button{background:#22c55e;border:none;padding:10px 16px;border-radius:8px;color:#000;font-weight:bold;cursor:pointer}
+input{padding:8px;border-radius:6px;border:none;margin:5px}
+.profit{color:#22c55e;font-weight:bold}
+.loss{color:#ef4444}
+.book{background:#1f2937;padding:8px;border-radius:6px;margin:4px;display:inline-block}
+footer{text-align:center;padding:20px;background:#020617;margin-top:30px}
+.badge{background:#22c55e;color:#000;padding:4px 8px;border-radius:6px;font-size:12px}
+</style>
+</head>
+<body>
+
+<header>
+<h1>Malawi Odds & Sure Bets</h1>
+<p>Live Odds • Arbitrage Finder • All Malawi Betting Sites</p>
+</header>
+
+<nav>
+<a href="#live">Live Odds</a>
+<a href="#sure">Sure Bets</a>
+<a href="#calculator">Calculator</a>
+<a href="#alerts">Alerts</a>
+<a href="#bookmakers">Bookmakers</a>
+</nav>
+
+<div class="container">
+
+<div class="card" id="live">
+<h2>Live Odds Feed</h2>
+<p>Data pulled from live odds API (requires API key)</p>
+<table class="table">
+<thead>
+<tr>
+<th>Match</th>
+<th>Betway</th>
+<th>BetPawa</th>
+<th>Betika</th>
+<th>PremierBet</th>
+<th>Best Odds</th>
+</tr>
+</thead>
+<tbody id="oddsTable"></tbody>
+</table>
+</div>
+
+<div class="card" id="sure">
+<h2>Automatic Sure Bet Scanner</h2>
+<table class="table">
+<thead>
+<tr>
+<th>Match</th>
+<th>Profit %</th>
+<th>Bookmakers</th>
+</tr>
+</thead>
+<tbody id="sureTable"></tbody>
+</table>
+</div>
+
+<div class="card" id="calculator">
+<h2>Sure Bet Calculator</h2>
+<input id="stake" placeholder="Total Stake MWK" type="number" />
+<input id="odd1" placeholder="Odds 1" type="number" step="0.01" />
+<input id="odd2" placeholder="Odds 2" type="number" step="0.01" />
+<input id="odd3" placeholder="Odds 3" type="number" step="0.01" />
+<button onclick="calculateSureBet()">Calculate</button>
+<p id="calcResult"></p>
+</div>
+
+<div class="card" id="alerts">
+<h2>Sure Bet Alerts</h2>
+<p>Enter Telegram or Email to receive alerts when a sure bet appears.</p>
+<input placeholder="Email" />
+<button>Subscribe</button>
+<p class="badge">Alert system demo</p>
+</div>
+
+<div class="card" id="bookmakers">
+<h2>Registered Malawian Betting Sites</h2>
+<div class="book">Betway</div>
+<div class="book">BetPawa</div>
+<div class="book">Betika</div>
+<div class="book">Premier Bet</div>
+<div class="book">World Star Betting</div>
+<div class="book">Bola Bet</div>
+<div class="book">888 Bets</div>
+<div class="book">Betyanga</div>
+<div class="book">Moors World of Sports</div>
+<div class="book">Mobipay</div>
+</div>
+
+</div>
+
+<footer>
+<p>Odds comparison platform for Malawian sportsbooks</p>
+</footer>
+
+<script>
+
+// ===== CONFIG =====
+// Your live odds API key
+const API_KEY = "383e9732693a28495c8340f28269adf5";
+
+const API_URL = `https://api.the-odds-api.com/v4/sports/soccer_epl/odds/?apiKey=${API_KEY}&regions=eu&markets=h2h`;
+
+async function loadOdds(){
+const table=document.getElementById("oddsTable");
+const sureTable=document.getElementById("sureTable");
+try{
+const res=await fetch(API_URL);
+const data=await res.json();
+
+ data.slice(0,10).forEach(match=>{
+let home=match.home_team;
+let away=match.away_team;
+let game=`${home} vs ${away}`;
+
+let odds={betway:null,betpawa:null,betika:null,premier:null};
+match.bookmakers.forEach(b=>{
+let name=b.title.toLowerCase();
+let price=b.markets[0].outcomes[0].price;
+if(name.includes("betway")) odds.betway=price;
+if(name.includes("betpawa")) odds.betpawa=price;
+if(name.includes("betika")) odds.betika=price;
+if(name.includes("premier")) odds.premier=price;
+});
+
+let best=Math.max(odds.betway||0, odds.betpawa||0, odds.betika||0, odds.premier||0);
+let row=`<tr>
+<td>${game}</td>
+<td>${odds.betway||'-'}</td>
+<td>${odds.betpawa||'-'}</td>
+<td>${odds.betika||'-'}</td>
+<td>${odds.premier||'-'}</td>
+<td class='profit'>${best}</td>
+</tr>`;
+table.innerHTML+=row;
+
+let values=[odds.betway,odds.betpawa,odds.betika].filter(v=>v);
+if(values.length>=3){
+let inv=(1/values[0])+(1/values[1])+(1/values[2]);
+if(inv<1){
+let profit=((1/inv)-1)*100;
+let sureRow=`<tr>
+<td>${game}</td>
+<td class='profit'>${profit.toFixed(2)}%</td>
+<td>Betway / BetPawa / Betika</td>
+</tr>`;
+sureTable.innerHTML+=sureRow;
+}
+}
+});
+}catch(e){
+console.log("API error",e);
+}
+}
+
+function calculateSureBet(){
+let stake=parseFloat(document.getElementById("stake").value);
+let o1=parseFloat(document.getElementById("odd1").value);
+let o2=parseFloat(document.getElementById("odd2").value);
+let o3=parseFloat(document.getElementById("odd3").value);
+let inv=(1/o1)+(1/o2)+(1/o3);
+if(inv<1){
+let s1=(stake/o1)/inv;
+let s2=(stake/o2)/inv;
+let s3=(stake/o3)/inv;
+let profit=(stake/inv)-stake;
+document.getElementById("calcResult").innerHTML=
+"Bet1: "+s1.toFixed(2)+" MWK<br>"+
+"Bet2: "+s2.toFixed(2)+" MWK<br>"+
+"Bet3: "+s3.toFixed(2)+" MWK<br>"+
+"<span class='profit'>Guaranteed Profit: "+profit.toFixed(2)+" MWK</span>";
+}else{
+document.getElementById("calcResult").innerHTML="<span class='loss'>No arbitrage opportunity</span>";
+}
+}
+
+loadOdds();
+
+</script>
+
+</body>
+</html>
